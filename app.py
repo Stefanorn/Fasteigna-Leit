@@ -19,6 +19,22 @@ class Constnts:
     EMAIL_PASSWORD = "Geirfinnur54"
     DB_CONNECTION_STRING = 'mongodb+srv://admin:prumpusvin44329@cluster0-xepqq.mongodb.net'
 
+class User(object):
+    def __init__(self, email, min_price, max_price, min_rooms, zip_codes, best_search_pricecutof):
+        self.email = email
+        self.min_price = min_price
+        self.max_price = max_price
+        self.min_rooms = min_rooms
+        self.zip_codes = zip_codes
+        self.best_search_pricecutof = best_search_pricecutof
+    def getUsername(self):
+        #TODO láta þetta skil emailinu - email eða eitthvað
+        username = re.sub(r'@.+', '', self.email)
+        username = re.sub(r'\.', '', username)
+        return username
+
+    
+
 ##################################################################
 #  Data_gathering fuctions
 ##################################################################
@@ -64,8 +80,6 @@ def scrape_website(html):
         allProps.append(prop)
     return allProps
 
-
-
 ##################################################################
 #  Data_manipulation_functions
 ##################################################################
@@ -97,9 +111,11 @@ def find_biggest_propertys(data,index):
     data.sort(key=sort_by_sqaremeter,reverse=True)
     return data[:index]
 
-def find_Best_Priced(data, scope_index, scope_amount):
+def find_Best_Priced(data, scope_amount):
     i = 0
-    scope_index = scope_index-1
+    scope_index = int(len(data) / 10)
+    if(scope_index < 5 ):
+        scope_index = 5
     intresting_appartments = [{}]
     intresting_appartments.pop()
 
@@ -112,14 +128,6 @@ def find_Best_Priced(data, scope_index, scope_amount):
         i += 1
     ## todo ath þetta fall skippar fyrstu 5 (scope_index) fasteignum þarf að búa til loopu sem skoðar þær
     return intresting_appartments
-
-# Raða listanum í öfugri stærðar röð
-# Ýtra i gegnum listan.
-# Taka íbúðina i-1 sem index.
-# Ef íbúð i er 2-3 miljón krónum ódýrari enn indexinn þá skila henni.
-# Ath ef stæðsta og dýrasta íbúðin er hagstæð.
-# Reykna meðal fermetraverð seinustu 5 íbúða í hverri ýtrun og fermetraverð næstu íbúðar 
-# er lægra þá skila ég henni (þá ef ég það koma 2x hagstæðar íbúðir í röð þá bæti ég þeim við.
 
 ##################################################################
 #  Data_gathering exporting
@@ -240,70 +248,69 @@ def generate_csv(data):
             ])
     csv_file.close()
 
-def get_data_from_site():
+def get_data_from_site( min_price, max_price, min_rooms, zip_code):
     # TODO gera fall sem sendir þessar requestur og skilar hreinu htmli eða scrapuðu data
-    price_point=[1000000,50000000]
-    min_rooms=3
-    hfj_requests = [
-        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=1',
-        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=2',
-        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=3',
-        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=4',
-        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=5'
+    site_request = [
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=1',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=2',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=3',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=4',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=5'
     ]
-    hfj_data = []
-    for req in hfj_requests:
+    site_data = []
+    for req in site_request:
         res = requests.get(req).text
         data = scrape_website(res)
-        hfj_data = hfj_data + data
+        site_data = site_data + data
     ## TODO þetta ætti að vera fall
-    return hfj_data
+    return site_data
 
 
-today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, 'fasteignir', 'hafnafjordur')
-if len(today_rows) >= 1:
-    print('allredy updated data todat')
-    db_items = today_rows[0]['best priced']
-
-    site_data = get_data_from_site()
-    site_items = find_Best_Priced(site_data, 10, 15000)
-
-    db_items_id = []
-    for item in db_items:
-        db_items_id.append(item['id'])
-    not_same = []
+user_list = []
+user_list.append(User('stefanorn92@gmail.com',1000000,50000000,3,['221','220'],15000))
+user_list.append(User('martamagnusd@live.com',1000000,50000000,3,['221'],15000))
 
 
-    for i in range(0,len( site_items ),1):
-        print(len(site_items))
-        if site_items[i]['id'] not in db_items_id:
-            not_same.append(site_items[i])
-    if(len(not_same) != 0):
-        send_email_with_update(not_same)
-    ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
-    
 
-    
-else:
-    hfj_data = get_data_from_site()
-    avrage_price = find_avrage_price(hfj_data)
-    best_priced = find_Best_Priced(hfj_data, 10, 15000)
-    below_avrage_priced = find_Best_Priced(hfj_data, 5, 0)
-    tableRow = {
-        'time' : datetime.today(),
-        'No of appartments': str(len(hfj_data)),
-        'City' : hfj_data[0]['post_number'],
-        'search term price': [1000000,50000000],
-        'search term min rooms': 3,
-        'avrage price': avrage_price,
-        'best priced': best_priced,
-        'Below Avrage Priced': below_avrage_priced
-    }
+for user in user_list:
+    for zip_code in user.zip_codes:
+        username = user.getUsername()
+        today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code)
+        if len(today_rows) >= 1:
+            print('allredy updated data today')
+            db_items = today_rows[0]['best priced']
 
-    print('Found '+ str(len(hfj_data)) + ' items')
-    print('adding data to db')
-    add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, 'fasteignir', 'hafnafjordur' )
-    print('data added')
-    print('sending email')
-    send_email(tableRow)
-    print('emailSent')
+            site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
+            site_items = find_Best_Priced(site_data, user.best_search_pricecutof)
+            ## TODO ójj?? 
+            db_items_id = []
+            for item in db_items:
+                db_items_id.append(item['id'])
+            not_same = []
+            for i in range(0,len( site_items ),1):
+                if site_items[i]['id'] not in db_items_id:
+                    not_same.append(site_items[i])
+            if(len(not_same) != 0):
+                send_email_with_update(not_same)
+            ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
+        else:
+            site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
+            avrage_price = find_avrage_price(site_data)
+            best_priced = find_Best_Priced( site_data, user.best_search_pricecutof )
+            tableRow = {
+                'time' : datetime.today(),
+                'No of appartments': str(len(site_data)),
+                'City' : zip_code,
+                'search term price': [user.min_price,user.max_price],
+                'search term min rooms': 3,
+                'avrage price': avrage_price,
+                'best priced': best_priced
+            }
+            print('Found '+ str(len(site_data)) + ' items')
+            print('adding data to db')
+            ## TODO Fasteignir ætti að vera user.email og Hafnafjörður ætti að vera user.zip
+            add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
+            print('data added')
+            print('sending email')
+            send_email(tableRow)
+            print('emailSent')
