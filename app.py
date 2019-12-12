@@ -7,6 +7,7 @@ import pymongo
 import csv
 import smtplib
 from email.message import EmailMessage
+from datetime import datetime
 
 ### TODO ætti að breyta þessu í margar skrár
 ### TODO það þirfti að laga öll breytunöfn hafa samræmi þetta er sick
@@ -64,9 +65,11 @@ def scrape_website(html):
     return allProps
 
 
+
 ##################################################################
 #  Data_manipulation_functions
 ##################################################################
+### TODO breyta þessu i klasa
 def sort_by_price( item ):
     return item['price']
 def sort_by_sqaremeter(item):
@@ -84,10 +87,39 @@ def find_avrage_price(data):
     for item in data:
         totalSum = totalSum + item['price']
     return totalSum / len(data)
+def find_avrage_squaremeter_price(data):
+    totalSum = 0
+    for item in data:
+        totalSum = totalSum + item['squareMeter_price']
+    return totalSum / len(data)
+
 def find_biggest_propertys(data,index):
     data.sort(key=sort_by_sqaremeter,reverse=True)
     return data[:index]
 
+def find_Best_Priced(data, scope_index, scope_amount):
+    i = 0
+    scope_index = scope_index-1
+    intresting_appartments = [{}]
+    intresting_appartments.pop()
+
+    data.sort(key=sort_by_sqaremeter,reverse=True)
+    while i < len(data) - scope_index-1:
+        avg = find_avrage_squaremeter_price(data[i:scope_index+i])
+        if( data[i+scope_index+1]['squareMeter_price'] - avg < -scope_amount):
+            data[i+scope_index+1]['Price Below Avrage'] = data[i+scope_index+1]['squareMeter_price'] - avg
+            intresting_appartments.append(data[i+scope_index+1])
+        i += 1
+    ## todo ath þetta fall skippar fyrstu 5 (scope_index) fasteignum þarf að búa til loopu sem skoðar þær
+    return intresting_appartments
+
+# Raða listanum í öfugri stærðar röð
+# Ýtra i gegnum listan.
+# Taka íbúðina i-1 sem index.
+# Ef íbúð i er 2-3 miljón krónum ódýrari enn indexinn þá skila henni.
+# Ath ef stæðsta og dýrasta íbúðin er hagstæð.
+# Reykna meðal fermetraverð seinustu 5 íbúða í hverri ýtrun og fermetraverð næstu íbúðar 
+# er lægra þá skila ég henni (þá ef ég það koma 2x hagstæðar íbúðir í röð þá bæti ég þeim við.
 
 ##################################################################
 #  Data_gathering exporting
@@ -98,42 +130,20 @@ def add_row_to_database(table_row, connection_string, database, collection ):
     db_cm = mng_db[collection]
     db_cm.insert_one(table_row)
 
+def Get_rows_from_today(connection_string, database, collection):
+    
+    today = datetime.today()
+    start = datetime(today.year, today.month, today.day, 0, 0)
+    end = datetime(today.year, today.month, today.day, 23, 59)
+
+    mng_client = pymongo.MongoClient(connection_string)
+    mng_db = mng_client[database]
+    db_cm = mng_db[collection]
+    ret = list(db_cm.find({ "time": {'$lt': end, '$gte': start}}))
+    return ret
+
 def print_to_console(data):
-    print(data['City'])
-    print('Avrage price is ' + str(int(data['avrage price'])) + ' kr')
-    print('')
-    print( str(len(data['lowest price'])) + ' lowest priced propertys are:')
-    print('------------------------------')
-    for item in data['lowest price']:
-        print(item['street_Address'] + ', ' + item['rooms'])
-        print('price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2')
-        print('price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' )
-        print('link -- '  + item['link'] )
-        print()
-    print('------------------------------')
-
-    print( str(len(data['Cheepest Square meter price'])) + ' Cheepset m2 propertys are:')
-    print('------------------------------')
-    for item in data['Cheepest Square meter price']:
-        print(item['street_Address'] + ', ' + item['rooms'])
-        print('price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2')
-        print('price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' )
-        print('link -- '  + item['link'] )
-        print()
-    print('------------------------------')
-
-    print( str(len(data['largest property'])) + ' largest propertys are:')
-    print('------------------------------')
-    for item in data['largest property']:
-        print(item['street_Address'] + ', ' + item['rooms'])
-        print('price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2')
-        print('price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' )
-        print('link -- '  + item['link'] )
-        print()
-    print('------------------------------')
-    print('Search term ')
-    print('pricepoint from ' + str(int(data['search term price'][0])) + " kr to " + str(int(data['search term price'][1])) + " kr" )
-    print('min rooms ' + str(int(data['search term min rooms'])) )
+    print(generate_generic_text(data))
 
 def generate_single_property_html( street_Address, rooms, price, squaremeter, squareMeter_price, link ):
     retString = ''
@@ -174,34 +184,14 @@ def generate_generic_text(data):
     retString += data['City'] + '\n'
     retString += 'Avrage price is ' + str(int(data['avrage price'])) + ' kr' + '\n'
     retString += '\n'
-    retString += str(len(data['lowest price'])) + ' lowest priced propertys are:' + '\n'
+    retString += 'found ' + str(len(data['best priced'])) + ' well priced appartments :' + '\n'
     retString += '------------------------------' + '\n'
-    for item in data['lowest price']:
+    for item in data['best priced']:
         retString += item['street_Address'] + ', ' + item['rooms'] + '\n'
         retString += 'price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2' + '\n'
         retString += 'price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' + '\n'
         retString += 'link -- '  + item['link']  + '\n'
         retString += '\n'
-    retString += '------------------------------' + '\n'
-
-    retString +=  str(len(data['Cheepest Square meter price'])) + ' Cheepset m2 propertys are:' + '\n'
-    retString += '------------------------------' + '\n'
-    for item in data['Cheepest Square meter price']:
-        retString += item['street_Address'] + ', ' + item['rooms'] + '\n'
-        retString += 'price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2' + '\n'
-        retString += 'price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' + '\n'
-        retString += 'link -- '  + item['link'] + '\n'
-        retString += '\n'
-    retString += '------------------------------'+ '\n'
-
-    retString +=  str(len(data['largest property'])) + ' largest propertys are:'+ '\n'
-    retString += '------------------------------' + '\n'
-    for item in data['largest property']:
-        retString += item['street_Address'] + ', ' + item['rooms'] + '\n'
-        retString += 'price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2' + '\n'
-        retString += 'price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' + '\n'
-        retString += 'link -- '  + item['link'] + '\n'
-        retString +=  '\n'
     retString += '------------------------------' + '\n'
     retString += 'Search term ' + '\n'
     retString += 'pricepoint from ' + str(int(data['search term price'][0])) + " kr to " + str(int(data['search term price'][1])) + " kr" + '\n'
@@ -237,45 +227,55 @@ def generate_csv(data):
             ])
     csv_file.close()
 
-# TODO laga harðkóðun hér þetta þessar breytur eru aldrei notaðar
-# TODO gera fall sem sendir þessar requestur og skilar hreinu htmli eða scrapuðu data
-price_point=[1000000,50000000]
-min_rooms=3
-hfj_requests = [
-    'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=1000000,50000000&room=3,10&itemcount=60&page=1',
-    'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=1000000,50000000&room=3,10&itemcount=60&page=2',
-    'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=1000000,50000000&room=3,10&itemcount=60&page=3',
-    'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=1000000,50000000&room=3,10&itemcount=60&page=4',
-    'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=1000000,50000000&room=3,10&itemcount=60&page=5']
+def get_data_from_site():
+    # TODO gera fall sem sendir þessar requestur og skilar hreinu htmli eða scrapuðu data
+    price_point=[1000000,50000000]
+    min_rooms=3
+    hfj_requests = [
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=1',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=2',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=3',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=4',
+        'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip=221&category=1,2,4,7&price=' + str(price_point[0]) +',' + str(price_point[1]) + '&room='+str(min_rooms)+',10&itemcount=60&page=5'
+    ]
+    hfj_data = []
+    for req in hfj_requests:
+        res = requests.get(req).text
+        data = scrape_website(res)
+        hfj_data = hfj_data + data
+    ## TODO þetta ætti að vera fall
+    return hfj_data
 
-hfj_data = []
-for req in hfj_requests:
-    res = requests.get(req).text
-    data = scrape_website(res)
-    hfj_data = hfj_data + data
 
-## TODO þetta ætti að vera fall
-lowest_price_hfj = find_lowest_prices(hfj_data, 10)
-cheepse_m2 = find_cheepes_squaremeter(hfj_data,5)
-avrage_price = find_avrage_price(hfj_data)
-largest_property = find_biggest_propertys(hfj_data,5)
+today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, 'fasteignir', 'hafnafjordur')
+if len(today_rows) >= 1:
+    print('allredy updated data todat')
+    #today_rows[0]['best priced']
 
-tableRow = {
-    'City' : hfj_data[0]['post_number'],
-    'search term price': [1000000,50000000],
-    'search term min rooms': 3,
-    'avrage price': avrage_price,
-    'Cheepest Square meter price' : cheepse_m2,
-    'lowest price' : lowest_price_hfj,
-    'largest property': largest_property,
-    'All data': hfj_data
-}
+    #site_data = get_data_from_site()
+    #recently_best_priced = find_Best_Priced(site_data, 10, 15000)
+    ## todo lata lista crosrefrenserast
+    
+else:
+    hfj_data = get_data_from_site()
+    avrage_price = find_avrage_price(hfj_data)
+    best_priced = find_Best_Priced(hfj_data, 10, 15000)
+    below_avrage_priced = find_Best_Priced(hfj_data, 5, 0)
+    tableRow = {
+        'time' : datetime.today(),
+        'No of appartments': str(len(hfj_data)),
+        'City' : hfj_data[0]['post_number'],
+        'search term price': [1000000,50000000],
+        'search term min rooms': 3,
+        'avrage price': avrage_price,
+        'best priced': best_priced,
+        'Below Avrage Priced': below_avrage_priced
+    }
 
-#print_to_console(tableRow)
-#generate_csv(tableRow)
-print('Found '+ str(len(tableRow['All data'])) + ' items')
-print('adding data to db')
-add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, 'fasteignir', 'hafnafjordur' )
-print('data added\nsending email')
-send_email(tableRow)
-print('emailSent')
+    print('Found '+ str(len(hfj_data)) + ' items')
+    print('adding data to db')
+    add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, 'fasteignir', 'hafnafjordur' )
+    print('data added')
+    print('sending email')
+    send_email(tableRow)
+    print('emailSent')
