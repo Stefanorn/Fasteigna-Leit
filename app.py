@@ -182,20 +182,20 @@ def generate_generic_HTML_text(data):
 def generate_generic_text(data):
     retString = ''
     retString += data['City'] + '\n'
-    retString += 'Avrage price is ' + str(int(data['avrage price'])) + ' kr' + '\n'
+    retString += 'Meðalverð : ' + str(int(data['avrage price'])) + ' kr' + '\n'
     retString += '\n'
-    retString += 'found ' + str(len(data['best priced'])) + ' well priced appartments :' + '\n'
+    retString += 'Fann ' + str(len(data['best priced'])) + ' íbúðir :' + '\n'
     retString += '------------------------------' + '\n'
     for item in data['best priced']:
         retString += item['street_Address'] + ', ' + item['rooms'] + '\n'
-        retString += 'price - ' + str(int(item['price'])) + ' kr, size - ' + str(int(item['squaremeter'])) + ' m2' + '\n'
-        retString += 'price/m2 - ' + str(int(item['squareMeter_price'])) + ' kr/m2' + '\n'
-        retString += 'link -- '  + item['link']  + '\n'
+        retString += 'Verð - ' + str(int(item['price'])) + ' kr, stærð - ' + str(int(item['squaremeter'])) + ' m2' + '\n'
+        retString += 'Fermetraverð : ' + str(int(item['squareMeter_price'])) + ' kr/m2' + '\n'
+        retString += 'hlekkur : '  + item['link']  + '\n'
         retString += '\n'
     retString += '------------------------------' + '\n'
-    retString += 'Search term ' + '\n'
-    retString += 'pricepoint from ' + str(int(data['search term price'][0])) + " kr to " + str(int(data['search term price'][1])) + " kr" + '\n'
-    retString += 'min rooms ' + str(int(data['search term min rooms'])) + '\n'
+    retString += 'Leitarskilyrði' + '\n'
+    retString += 'verðbil : ' + str(int(data['search term price'][0])) + " til " + str(int(data['search term price'][1])) + " kr" + '\n'
+    retString += 'herbergi : ' + str(int(data['search term min rooms'])) + '\n'
     return retString
 def send_email(data):
     EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
@@ -206,6 +206,19 @@ def send_email(data):
     msg['To'] = 'stefanorn92@gmail.com'
     content = generate_generic_text(data)
     msg.set_content( content )
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
+        smtp.send_message(msg)
+def send_email_with_update(data):
+    EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
+    EMAIL_PASSWORD = Constnts.EMAIL_PASSWORD
+    msg = EmailMessage()
+    msg['Subject'] = 'Áhugaverdar Ibudir'
+    msg['From'] = 'ekkisvara69@gmail.com'
+    msg['To'] = 'stefanorn92@gmail.com'
+    ## TODO formata þetta
+    msg.set_content( str(data) )
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
         smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
@@ -250,11 +263,26 @@ def get_data_from_site():
 today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, 'fasteignir', 'hafnafjordur')
 if len(today_rows) >= 1:
     print('allredy updated data todat')
-    #today_rows[0]['best priced']
+    db_items = today_rows[0]['best priced']
 
-    #site_data = get_data_from_site()
-    #recently_best_priced = find_Best_Priced(site_data, 10, 15000)
-    ## todo lata lista crosrefrenserast
+    site_data = get_data_from_site()
+    site_items = find_Best_Priced(site_data, 10, 15000)
+
+    db_items_id = []
+    for item in db_items:
+        db_items_id.append(item['id'])
+    not_same = []
+
+
+    for i in range(0,len( site_items ),1):
+        print(len(site_items))
+        if site_items[i]['id'] not in db_items_id:
+            not_same.append(site_items[i])
+    if(len(not_same) != 0):
+        send_email_with_update(not_same)
+    ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
+    
+
     
 else:
     hfj_data = get_data_from_site()
