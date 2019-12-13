@@ -1,12 +1,13 @@
-  1 Headline
-  2 {[(postalCode)]}
-  3 {[(awrage_price)]}
-  4 
-  5 Item
-  6 {[(street_address)]}
-  7 {[(rooms)]}
-  8 {[(price)]}
-  9 {[(size)]}
- 10 {[(price_per_m2)]}
- 11 {[(image)]}
- 12 https://i.imgur.com/OWLoorP.jpg
+
+Headline
+&&_postalCode_&&
+&&_avrage_price_&&
+
+Item
+&&_street_address_&&
+&&_rooms_&&
+&&_price_&&
+&&_size_&&
+&&_price_per_m2_&&
+&&_link_&&
+&&_image_&& -- https://i.imgur.com/OWLoorP.jpg

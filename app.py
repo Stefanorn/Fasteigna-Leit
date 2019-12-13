@@ -9,6 +9,7 @@ import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 import time
+from Create_Email_Content import Create_Email_Content
 
 ### TODO ætti að breyta þessu í margar skrár
 ### TODO það þirfti að laga öll breytunöfn hafa samræmi þetta er sick
@@ -34,20 +35,6 @@ class User(object):
         username = re.sub(r'\.', '', username)
         return username
 
-## TODO láta þennan klasa lesa úr email template og genereita email svar
-class Create_Email_Content(object):
-    def __init__(self, data):
-        self.data = data
-    def _generate_head(self):
-        return ""
-    def _generate_headLine(self):
-        return ""
-    def _generate_item(self):
-        return ""
-    def _generate_fooder(self):
-        return ""
-    def Html_Content(self):
-        return self.data
 
 ##################################################################
 #  Data_gathering fuctions
@@ -90,6 +77,7 @@ def scrape_website(html):
             "price" : float(price),
             "squaremeter": float(squareMeter),
             "squareMeter_price": squareMeterPrice,
+            "image": "https://i.imgur.com/OWLoorP.jpg"
         }
         allProps.append(prop)
     return allProps
@@ -226,8 +214,16 @@ def send_email(data, email, zip_code):
     msg['Subject'] = 'Áhugaverdar íbúðir í ' + zip_code 
     msg['From'] = 'ekkisvara69@gmail.com'
     msg['To'] = email
+
     content = generate_generic_text(data)
     msg.set_content( content )
+
+    header = { 
+        'City': data['City'],
+        'avrage price': data['avrage price'] 
+        }
+    cec = Create_Email_Content( data['best priced'], header)
+    msg.add_alternative(cec.Html_Content(), subtype='html')
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
         smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
@@ -241,6 +237,9 @@ def send_email_with_update(data, email, zip_code):
     msg['To'] = email
     ## TODO formata þetta
     msg.set_content( str(data) )
+
+    cec = Create_Email_Content( data )
+    msg.add_alternative(cec.Html_Content(), subtype='html')
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
         smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
@@ -263,7 +262,6 @@ def generate_csv(data):
     csv_file.close()
 
 def get_data_from_site( min_price, max_price, min_rooms, zip_code):
-    # TODO gera fall sem sendir þessar requestur og skilar hreinu htmli eða scrapuðu data
     site_request = [
         'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=1',
         'http://fasteignir.visir.is/ajaxsearch/getresults?stype=sale&zip='+ str(zip_code) +'&category=1,2,4,7&price=' + str(min_price) +',' + str(max_price) + '&room='+str(min_rooms)+',10&itemcount=60&page=2',
