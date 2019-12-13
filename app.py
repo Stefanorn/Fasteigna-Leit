@@ -34,7 +34,20 @@ class User(object):
         username = re.sub(r'\.', '', username)
         return username
 
-    
+## TODO láta þennan klasa lesa úr email template og genereita email svar
+class Create_Email_Content(object):
+    def __init__(self, data):
+        self.data = data
+    def _generate_head(self):
+        return ""
+    def _generate_headLine(self):
+        return ""
+    def _generate_item(self):
+        return ""
+    def _generate_fooder(self):
+        return ""
+    def Html_Content(self):
+        return self.data
 
 ##################################################################
 #  Data_gathering fuctions
@@ -262,10 +275,11 @@ def get_data_from_site( min_price, max_price, min_rooms, zip_code):
     for req in site_request:
         res = requests.get(req).text
         data = scrape_website(res)
+        if len(data) == 0:
+            break
         site_data = site_data + data
         ## TODO Sleepa hér til að vera ekki að spamma visir.is
-        time.sleep(.500)
-    ## TODO þetta ætti að vera fall
+        time.sleep(1)
     return site_data
 
 
