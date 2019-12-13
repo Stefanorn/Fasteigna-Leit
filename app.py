@@ -205,26 +205,26 @@ def generate_generic_text(data):
     retString += 'verðbil : ' + str(int(data['search term price'][0])) + " til " + str(int(data['search term price'][1])) + " kr" + '\n'
     retString += 'herbergi : ' + str(int(data['search term min rooms'])) + '\n'
     return retString
-def send_email(data):
+def send_email(data, email, zip_code):
     EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
     EMAIL_PASSWORD = Constnts.EMAIL_PASSWORD
     msg = EmailMessage()
-    msg['Subject'] = 'Áhugaverdar Ibudir'
+    msg['Subject'] = 'Áhugaverdar íbúðir í ' + zip_code 
     msg['From'] = 'ekkisvara69@gmail.com'
-    msg['To'] = 'stefanorn92@gmail.com'
+    msg['To'] = email
     content = generate_generic_text(data)
     msg.set_content( content )
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
         smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
         smtp.send_message(msg)
-def send_email_with_update(data):
+def send_email_with_update(data, email, zip_code):
     EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
     EMAIL_PASSWORD = Constnts.EMAIL_PASSWORD
     msg = EmailMessage()
-    msg['Subject'] = 'Áhugaverdar Ibudir'
+    msg['Subject'] = 'Uppfærsla, ný íbúð í ' + str(zip_code)
     msg['From'] = 'ekkisvara69@gmail.com'
-    msg['To'] = 'stefanorn92@gmail.com'
+    msg['To'] = email
     ## TODO formata þetta
     msg.set_content( str(data) )
 
@@ -267,8 +267,9 @@ def get_data_from_site( min_price, max_price, min_rooms, zip_code):
 
 
 user_list = []
-user_list.append(User('stefanorn92@gmail.com',1000000,50000000,3,['221','220'],15000))
+user_list.append(User('stefanorn92@gmail.com',1000000,50000000,3,['221','220','200','201','203','240'],15000))
 user_list.append(User('martamagnusd@live.com',1000000,50000000,3,['221'],15000))
+user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200','201','203','210','212','225','220','221','222'],15000))
 
 
 
@@ -291,7 +292,7 @@ for user in user_list:
                 if site_items[i]['id'] not in db_items_id:
                     not_same.append(site_items[i])
             if(len(not_same) != 0):
-                send_email_with_update(not_same)
+                send_email_with_update(not_same, user.email, zip_code)
             ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
         else:
             site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
@@ -312,5 +313,5 @@ for user in user_list:
             add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
             print('data added')
             print('sending email')
-            send_email(tableRow)
+            send_email(tableRow, user.email, zip_code)
             print('emailSent')
