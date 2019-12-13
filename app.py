@@ -8,6 +8,7 @@ import csv
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime
+import time
 
 ### TODO ætti að breyta þessu í margar skrár
 ### TODO það þirfti að laga öll breytunöfn hafa samræmi þetta er sick
@@ -262,6 +263,8 @@ def get_data_from_site( min_price, max_price, min_rooms, zip_code):
         res = requests.get(req).text
         data = scrape_website(res)
         site_data = site_data + data
+        ## TODO Sleepa hér til að vera ekki að spamma visir.is
+        time.sleep(.500)
     ## TODO þetta ætti að vera fall
     return site_data
 
