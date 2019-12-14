@@ -1,7 +1,6 @@
 import re
-
-"""
-For testing purps
+""""
+Þetta ætti að vera í testfile
 bodyTemp = [{
             "id" : 123,
             "link" : 'www.hugi.is',
@@ -43,37 +42,33 @@ headTemp = {
 
 cle = Create_Email_Content(bodyTemp,headTemp)
 
+cle.add_header(headTemp)
+cle.add_contend(bodyTemp)
+
 print(cle.Html_Content())
-"""
+""""
 
 def _readable_large_number(large_number):
     large_number = large_number[::-1]
     large_number = '.'.join(large_number[i:i+3] for i in range(0, len(large_number), 3))
     return large_number[::-1]
 class Create_Email_Content(object):
-    def __init__(self, body, header=None):
+
+    def __init__(self, body=None, header=None):
         self.body = body
         self.header = header
-    def _generate_head(self):
-        f = open('./emailTemplate/head.html')
-        return f.read()
-    def _generate_headLine(self):
-        f = open('./emailTemplate/headline.html')
-        return f.read()
-    def _generate_item(self):
-        f = open('./emailTemplate/item.html')
-        return f.read()
-    def _generate_fooder(self):
-        f = open('./emailTemplate/fooder.html')
-        return f.read()
-    def Html_Content(self):
-        res = self._generate_head()
+        self.res = self._generate_head()
+
         if self.header is not None:
-            avg_price = _readable_large_number(str(int(self.header['avrage price'])))
-            headline = self._generate_headLine()
-            headline = re.sub(r'&&_postalCode_&&', self.header['City'], headline)
-            headline = re.sub(r'&&_avrage_price_&&', "Meðalverð er : " + avg_price + " kr", headline)
-            res += headline
+            self.add_header(header)
+        if self.body is not None:
+            self.add_contend(body)
+
+
+    def Html_Content(self):
+        self.res += self._generate_fooder()
+        return self.res
+    def add_contend(self, body):
         for item in self.body:
             price = _readable_large_number(str(int(item['price'])))
             m2_price = _readable_large_number(str(int(item['squareMeter_price'])))
@@ -86,6 +81,23 @@ class Create_Email_Content(object):
             body = re.sub(r'&&_price_per_m2_&&', 'fermetraverð ' + m2_price + ' kr', body)
             body = re.sub(r'&&_link_&&', item['link'], body)
             body = re.sub(r'&&_image_&&', item['image'], body)
-            res += body
-        res += self._generate_fooder()
-        return res
+            self.res += body
+    def add_header(self, header):
+        avg_price = _readable_large_number(str(int(self.header['avrage price'])))
+        headline = self._generate_headLine()
+        headline = re.sub(r'&&_postalCode_&&', self.header['City'], headline)
+        headline = re.sub(r'&&_avrage_price_&&', "Meðalverð er : " + avg_price + " kr", headline)
+        self.res += headline
+
+    def _generate_head(self):
+        f = open('./emailTemplate/head.html')
+        return f.read()
+    def _generate_headLine(self):
+        f = open('./emailTemplate/headline.html')
+        return f.read()
+    def _generate_item(self):
+        f = open('./emailTemplate/item.html')
+        return f.read()
+    def _generate_fooder(self):
+        f = open('./emailTemplate/fooder.html')
+        return f.read()
