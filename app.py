@@ -10,16 +10,14 @@ from email.message import EmailMessage
 from datetime import datetime
 import time
 from Create_Email_Content import Create_Email_Content
+from Constnts import Constnts
 
 ### TODO ætti að breyta þessu í margar skrár
 ### TODO það þirfti að laga öll breytunöfn hafa samræmi þetta er sick
 
 
 ## TODO þarf að gera enviroment breytur
-class Constnts:
-    EMAIL_ADDRESS = "ekkisvara69@gmail.com"
-    EMAIL_PASSWORD = "Geirfinnur54"
-    DB_CONNECTION_STRING = 'mongodb+srv://admin:prumpusvin44329@cluster0-xepqq.mongodb.net'
+
 
 class User(object):
     def __init__(self, email, min_price, max_price, min_rooms, zip_codes, best_search_pricecutof):
@@ -102,6 +100,10 @@ def find_avrage_price(data):
     totalSum = 0
     for item in data:
         totalSum = totalSum + item['price']
+    if totalSum == 0:
+        return -1
+    if len(data) == 0:
+        return -1
     return totalSum / len(data)
 def find_avrage_squaremeter_price(data):
     totalSum = 0
@@ -295,8 +297,10 @@ for user in user_list:
         if len(today_rows) >= 1:
             print('allredy updated data today')
             db_items = today_rows[0]['best priced']
-
             site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
+            if len(site_data) == 0:
+                print('fond nothing in ' + zip_code)
+                continue
             site_items = find_Best_Priced(site_data, user.best_search_pricecutof)
             ## TODO ójj?? 
             db_items_id = []
@@ -311,6 +315,9 @@ for user in user_list:
             ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
         else:
             site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
+            if len(site_data) == 0:
+                print('fond nothing in ' + zip_code)
+                continue
             avrage_price = find_avrage_price(site_data)
             best_priced = find_Best_Priced( site_data, user.best_search_pricecutof )
             tableRow = {

@@ -3,3 +3,4 @@ stdout.log
 .DS_Store
 .vscode/*
 __pycache__/*
+Constnts.py
