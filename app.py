@@ -156,41 +156,6 @@ def Get_rows_from_today(connection_string, database, collection):
 
 def print_to_console(data):
     print(generate_generic_text(data))
-
-def generate_single_property_html( street_Address, rooms, price, squaremeter, squareMeter_price, link ):
-    retString = ''
-    retString += street_Address + ', ' + rooms + '\n'
-    retString += 'price - ' + price + ' kr, size - ' + squaremeter + ' m2' + '\n'
-    retString += 'price/m2 - ' + squareMeter_price + ' kr/m2' + '\n'
-    retString += 'link -- '  + link + '\n\n'
-    return retString
-## TODO klára þetta henda inn html tögum
-def generate_generic_HTML_text(data):
-    retString = ''
-    retString += data['City'] + '\n'
-    retString += 'Avrage price is ' + str(int(data['avrage price'])) + ' kr' + '\n'
-    retString += '\n'
-    retString += str(len(data['lowest price'])) + ' lowest priced propertys are:' + '\n'
-    retString += '------------------------------' + '\n'
-    for item in data['lowest price']:
-        retString += generate_single_property_html( item['street_Address'],item['rooms'], str(int(item['price'])), str(int(item['squaremeter'])), str(int(item['squareMeter_price'])), item['link'] )
-    retString += '------------------------------' + '\n'
-
-    retString +=  str(len(data['Cheepest Square meter price'])) + ' Cheepset m2 propertys are:' + '\n'
-    retString += '------------------------------' + '\n'
-    for item in data['Cheepest Square meter price']:
-        retString += generate_single_property_html( item['street_Address'],item['rooms'], str(int(item['price'])), str(int(item['squaremeter'])), str(int(item['squareMeter_price'])), item['link'] )
-    retString += '------------------------------'+ '\n'
-
-    retString +=  str(len(data['largest property'])) + ' largest propertys are:'+ '\n'
-    retString += '------------------------------' + '\n'
-    for item in data['largest property']:
-        retString += generate_single_property_html( item['street_Address'],item['rooms'], str(int(item['price'])), str(int(item['squaremeter'])), str(int(item['squareMeter_price'])), item['link'] )
-    retString += '------------------------------' + '\n'
-    retString += 'Search term ' + '\n'
-    retString += 'pricepoint from ' + str(int(data['search term price'][0])) + " kr to " + str(int(data['search term price'][1])) + " kr" + '\n'
-    retString += 'min rooms ' + str(int(data['search term min rooms'])) + '\n'
-    return retString
 def generate_generic_text(data):
     retString = ''
     retString += data['City'] + '\n'
@@ -237,7 +202,6 @@ def send_email_with_update(data, email, zip_code):
     msg['Subject'] = 'Uppfærsla, ný íbúð í ' + str(zip_code)
     msg['From'] = 'ekkisvara69@gmail.com'
     msg['To'] = email
-    ## TODO formata þetta
     msg.set_content( str(data) )
 
     cec = Create_Email_Content( data )
@@ -247,21 +211,6 @@ def send_email_with_update(data, email, zip_code):
         smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
         smtp.send_message(msg)
 
-def generate_csv(data):
-    csv_file = open('temp.csv','w')
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(['number','link','street', 'rooms', 'price', 'size', 'price/m2'])
-    for item in data['lowest price']:
-        csv_writer.writerow([
-            '1',
-            item['link'],
-            item['street_Address'],
-            item['rooms'],
-            str(int(item['price'])),
-            str(int(item['squaremeter'])),
-            str(int(item['squareMeter_price']))
-            ])
-    csv_file.close()
 
 def get_data_from_site( min_price, max_price, min_rooms, zip_code):
     site_request = [
@@ -311,7 +260,11 @@ for user in user_list:
                 if site_items[i]['id'] not in db_items_id:
                     not_same.append(site_items[i])
             if(len(not_same) != 0):
-                send_email_with_update(not_same, user.email, zip_code)
+                try:
+                    send_email_with_update(not_same, user.email, zip_code)
+                except:
+                    print('Cant Send email')
+
             ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
         else:
             site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
@@ -329,11 +282,10 @@ for user in user_list:
                 'avrage price': avrage_price,
                 'best priced': best_priced
             }
-            print('Found '+ str(len(site_data)) + ' items')
-            print('adding data to db')
             ## TODO Fasteignir ætti að vera user.email og Hafnafjörður ætti að vera user.zip
             add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
-            print('data added')
-            print('sending email')
-            send_email(tableRow, user.email, zip_code)
-            print('emailSent')
+            try:
+                send_email(tableRow, user.email, zip_code)
+            except:
+                print('Cant Send email')
+    print( str(datetime.today()) + ' User Finished ' + user.getUsername() )
