@@ -64,7 +64,6 @@ def scrape_website(html):
         try:
             squareMeterPrice = float(price) / float(squareMeter)
         except:
-            print( "Log message -- cannot scrape item " + link )
             continue
         prop = {
             "id" : id,
@@ -174,43 +173,20 @@ def generate_generic_text(data):
     retString += 'verðbil : ' + str(int(data['search term price'][0])) + " til " + str(int(data['search term price'][1])) + " kr" + '\n'
     retString += 'herbergi : ' + str(int(data['search term min rooms'])) + '\n'
     return retString
-def send_email(data, email, zip_code):
+def send_email(content, email, zip_code):
     EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
     EMAIL_PASSWORD = Constnts.EMAIL_PASSWORD
     msg = EmailMessage()
     msg['Subject'] = 'Áhugaverdar íbúðir í ' + zip_code 
     msg['From'] = 'ekkisvara69@gmail.com'
     msg['To'] = email
-
-    content = generate_generic_text(data)
     msg.set_content( content )
 
-    header = { 
-        'City': data['City'],
-        'avrage price': data['avrage price'] 
-        }
-    cec = Create_Email_Content( data['best priced'], header)
-    msg.add_alternative(cec.Html_Content(), subtype='html')
+    msg.add_alternative(content, subtype='html')
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
         smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
         smtp.send_message(msg)
-def send_email_with_update(data, email, zip_code):
-    EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
-    EMAIL_PASSWORD = Constnts.EMAIL_PASSWORD
-    msg = EmailMessage()
-    msg['Subject'] = 'Uppfærsla, ný íbúð í ' + str(zip_code)
-    msg['From'] = 'ekkisvara69@gmail.com'
-    msg['To'] = email
-    msg.set_content( str(data) )
-
-    cec = Create_Email_Content( data )
-    msg.add_alternative(cec.Html_Content(), subtype='html')
-
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-        smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
-        smtp.send_message(msg)
-
 
 def get_data_from_site( min_price, max_price, min_rooms, zip_code):
     site_request = [
@@ -234,21 +210,21 @@ def get_data_from_site( min_price, max_price, min_rooms, zip_code):
 
 user_list = []
 user_list.append(User('stefanorn92@gmail.com',1000000,50000000,3,['221','220','200','201','203','240'],15000))
-user_list.append(User('martamagnusd@live.com',1000000,50000000,3,['221'],15000))
-user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200','201','203','210','212','225','220','221','222'],15000))
+#user_list.append(User('martamagnusd@live.com',1000000,50000000,3,['221'],15000))
+#user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200','201','203','210','212','225','220','221','222'],15000))
 
 
 
 for user in user_list:
+    content = Create_Email_Content()
+    content_was_added = False
     for zip_code in user.zip_codes:
         username = user.getUsername()
         today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code)
         if len(today_rows) >= 1:
-            print('allredy updated data today')
             db_items = today_rows[0]['best priced']
             site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
             if len(site_data) == 0:
-                print('fond nothing in ' + zip_code)
                 continue
             site_items = find_Best_Priced(site_data, user.best_search_pricecutof)
             ## TODO ójj?? 
@@ -260,16 +236,13 @@ for user in user_list:
                 if site_items[i]['id'] not in db_items_id:
                     not_same.append(site_items[i])
             if(len(not_same) != 0):
-                try:
-                    send_email_with_update(not_same, user.email, zip_code)
-                except:
-                    print('Cant Send email')
-
-            ## TODO þarf að uppfæra b því annars sendi ég sama emailið á hverjum klst
+                header = { 'City': 'Update in ' + str(not_same['post_number']), 'avrage price': -100 }
+                content.add_header(header)
+                content.add_contend(not_same)
+                content_was_added = True
         else:
             site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
             if len(site_data) == 0:
-                print('fond nothing in ' + zip_code)
                 continue
             avrage_price = find_avrage_price(site_data)
             best_priced = find_Best_Priced( site_data, user.best_search_pricecutof )
@@ -282,10 +255,18 @@ for user in user_list:
                 'avrage price': avrage_price,
                 'best priced': best_priced
             }
-            ## TODO Fasteignir ætti að vera user.email og Hafnafjörður ætti að vera user.zip
             add_row_to_database(tableRow, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
-            try:
-                send_email(tableRow, user.email, zip_code)
-            except:
-                print('Cant Send email')
-    print( str(datetime.today()) + ' User Finished ' + user.getUsername() )
+            header = { 
+                'City': tableRow['City'],
+                'avrage price': tableRow['avrage price'] 
+            }
+            content.add_header(header)
+            content.add_contend(tableRow['best priced'])
+            content_was_added = True
+    if content_was_added is True :
+        try:
+            send_email(content.Html_Content(), user.email, zip_code)
+            print( str(datetime.today()) + ' Email sent to ' + user.getUsername() )
+
+        except:
+            print('Cant Send email')

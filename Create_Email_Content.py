@@ -1,52 +1,4 @@
 import re
-""""
-Þetta ætti að vera í testfile
-bodyTemp = [{
-            "id" : 123,
-            "link" : 'www.hugi.is',
-            "post_number" : '221 hafnavík',
-            "street_Address" : 'StebbaStraeti',
-            "rooms": '2 rooms apartment',
-            "price" : 20000000.2,
-            "squaremeter": 100,
-            "squareMeter_price": 500000,
-            "image": "https://i.imgur.com/OWLoorP.jpg"
-        },
-        {
-            "id" : 123,
-            "link" : 'www.hugi.is',
-            "post_number" : '221',
-            "street_Address" : 'stöffgata',
-            "rooms": '2',
-            "price" : 21.2,
-            "squaremeter": 233,
-            "squareMeter_price": 232,
-            "image": "https://i.imgur.com/OWLoorP.jpg"
-        },
-        {
-            "id" : 123,
-            "link" : 'www.hugi.is',
-            "post_number" : '221',
-            "street_Address" : 'stöffgata',
-            "rooms": '2',
-            "price" : 21.2,
-            "squaremeter": 233,
-            "squareMeter_price": 232,
-            "image": "https://i.imgur.com/OWLoorP.jpg"
-        }]
-
-headTemp = {
-    'City' : '201',
-    'avrage price': 12344
-}
-
-cle = Create_Email_Content(bodyTemp,headTemp)
-
-cle.add_header(headTemp)
-cle.add_contend(bodyTemp)
-
-print(cle.Html_Content())
-""""
 
 def _readable_large_number(large_number):
     large_number = large_number[::-1]
@@ -66,10 +18,9 @@ class Create_Email_Content(object):
 
 
     def Html_Content(self):
-        self.res += self._generate_fooder()
-        return self.res
+        return self.res + self._generate_fooder()
     def add_contend(self, body):
-        for item in self.body:
+        for item in body:
             price = _readable_large_number(str(int(item['price'])))
             m2_price = _readable_large_number(str(int(item['squareMeter_price'])))
 
@@ -83,9 +34,9 @@ class Create_Email_Content(object):
             body = re.sub(r'&&_image_&&', item['image'], body)
             self.res += body
     def add_header(self, header):
-        avg_price = _readable_large_number(str(int(self.header['avrage price'])))
+        avg_price = _readable_large_number(str(int(header['avrage price'])))
         headline = self._generate_headLine()
-        headline = re.sub(r'&&_postalCode_&&', self.header['City'], headline)
+        headline = re.sub(r'&&_postalCode_&&', header['City'], headline)
         headline = re.sub(r'&&_avrage_price_&&', "Meðalverð er : " + avg_price + " kr", headline)
         self.res += headline
 
