@@ -210,8 +210,8 @@ def get_data_from_site( min_price, max_price, min_rooms, zip_code):
 
 user_list = []
 user_list.append(User('stefanorn92@gmail.com',1000000,50000000,3,['221','220','200','201','203','240'],15000))
-#user_list.append(User('martamagnusd@live.com',1000000,50000000,3,['221'],15000))
-#user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200','201','203','210','212','225','220','221','222'],15000))
+user_list.append(User('martamagnusd@live.com',1000000,50000000,3,['221'],15000))
+user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200','201','203','210','212','225','220','221','222'],15000))
 
 
 
@@ -265,7 +265,10 @@ for user in user_list:
             content_was_added = True
     if content_was_added is True :
         try:
-            send_email(content.Html_Content(), user.email, zip_code)
+            f = open( 'send_email_temps/' + user.getUsername() + '.html', 'w' )
+            f.write(content.Html_Content())
+            f.close()
+            send_email(content.Html_Content(), user.email, 'Vel verðsettar íbúðir að skoða')
             print( str(datetime.today()) + ' Email sent to ' + user.getUsername() )
 
         except:

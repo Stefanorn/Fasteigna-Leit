@@ -4,3 +4,4 @@ stdout.log
 .vscode/*
 __pycache__/*
 Constnts.py
+send_email_temps/*
