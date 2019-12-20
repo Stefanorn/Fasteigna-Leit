@@ -2,6 +2,7 @@ import requests
 import urllib.request
 from bs4 import BeautifulSoup
 import re
+import os
 import json
 import pymongo
 import csv
@@ -265,14 +266,13 @@ for user in user_list:
             content.add_contend(tableRow['best priced'])
             content_was_added = True
     if content_was_added is True :
-        try:
-            f = open( 'send_email_temps/' + user.getUsername() + '.html', 'w' )
-            f.write(content.Html_Content())
-            f.close()
-            send_email(content.Html_Content(), user.email, 'Vel verðsettar íbúðir að skoða')
-            print( str(datetime.today()) + ' Email sent to ' + user.getUsername() )
+        if not os.path.exists('send_email_temps'):
+            os.makedirs('send_email_temps')
+        f = open( 'send_email_temps/' + user.getUsername() + '.html', 'w' )
+        f.write(content.Html_Content())
+        f.close()
+        send_email(content.Html_Content(), user.email, 'Vel verðsettar íbúðir að skoða')
+        print( str(datetime.today()) + ' Email sent to ' + user.getUsername() )
 
-        except:
-            print('Cant Send email')
 end_time = time.time()
 print( str(datetime.today()) + ' Success exec time : %s Secounds' % (end_time - start_time) )
