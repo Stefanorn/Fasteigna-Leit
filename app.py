@@ -8,10 +8,11 @@ import pymongo
 import csv
 import smtplib
 from email.message import EmailMessage
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from Create_Email_Content import Create_Email_Content
 from Constnts import Constnts
+from scrape_website import scrape_website
 
 ### TODO ætti að breyta þessu í margar skrár
 ### TODO það þirfti að laga öll breytunöfn hafa samræmi þetta er sick
@@ -34,51 +35,6 @@ class User(object):
         username = re.sub(r'\.', '', username)
         return username
 
-
-##################################################################
-#  Data_gathering fuctions
-##################################################################
-def scrape_website(html):
-    soup = BeautifulSoup(html, 'html.parser')
-
-    allProps = []
-    for detail in soup.findAll("div", class_="property__details"): 
-        post_Number = detail.find('div', class_='property__postalcode').text
-
-        street_Address = detail.find('div', class_='property__title').h2.text
-
-        price = detail.find('div', class_='property__price').text
-        price = price[:-4]
-        price = re.sub(r'\.', '', price)
-
-        id = detail.find('div', class_='property__title').h2.a
-        id = str(id)
-        id = id.split('/')[2].split('?')[0]
-
-        link = 'http://fasteignir.visir.is/property/' + id
-
-        squareMeter = detail.find('span', class_='property__size').text
-        squareMeter = squareMeter[:-5]
-        squareMeter = re.sub(r'\,', '.', squareMeter)
-
-        rooms = detail.find('span', class_='property__arrangement').text
-        try:
-            squareMeterPrice = float(price) / float(squareMeter)
-        except:
-            continue
-        prop = {
-            "id" : id,
-            "link" : link,
-            "post_number" : post_Number,
-            "street_Address" : street_Address,
-            "rooms": rooms,
-            "price" : float(price),
-            "squaremeter": float(squareMeter),
-            "squareMeter_price": squareMeterPrice,
-            "image": "https://i.imgur.com/OWLoorP.jpg"
-        }
-        allProps.append(prop)
-    return allProps
 
 ##################################################################
 #  Data_manipulation_functions
@@ -136,13 +92,35 @@ def find_Best_Priced(data, scope_amount):
 ##################################################################
 #  Data_gathering exporting
 ##################################################################
+def update_array_in_row(row_id,data, connection_string, database, collection ):
+    mng_client = pymongo.MongoClient(connection_string)
+    mng_db = mng_client[database]
+    db_cm = mng_db[collection]
+    db_cm.update_one({'_id': row_id },
+                    { '$push': { 'new items today' : data } } )
+
+
 def add_row_to_database(table_row, connection_string, database, collection ):
     mng_client = pymongo.MongoClient(connection_string)
     mng_db = mng_client[database]
     db_cm = mng_db[collection]
     db_cm.insert_one(table_row)
+def compare_two_days(d1,d2):
+    
+    d1_id = []
+    for dataset in d1:
+        for d1_item in dataset['best priced']:
+            d1_id.append(d1_item['id'])
+    d2_id = []
+    for dataset2 in d2:
+        for d2_item in dataset2['best priced']:
+            d2_id.append(d2_item['id'])
 
-def Get_rows_from_today(connection_string, database, collection):
+    if d1_id == d2_id:
+        return True
+    else:
+        return False
+def Get_rows_from_today(connection_string, database, collection, today):
     
     today = datetime.today()
     start = datetime(today.year, today.month, today.day, 0, 0)
@@ -178,7 +156,7 @@ def send_email(content, email, zip_code):
     EMAIL_ADDRESS = Constnts.EMAIL_ADDRESS
     EMAIL_PASSWORD = Constnts.EMAIL_PASSWORD
     msg = EmailMessage()
-    msg['Subject'] = 'Áhugaverdar íbúðir í ' + zip_code 
+    msg['Subject'] = zip_code 
     msg['From'] = 'ekkisvara69@gmail.com'
     msg['To'] = email
     msg.set_content( content )
@@ -220,14 +198,23 @@ user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200
 for user in user_list:
     content = Create_Email_Content()
     content_was_added = False
+    today_rows = []
+    yesterday_rows = []
     for zip_code in user.zip_codes:
         username = user.getUsername()
-        today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code)
+        today = datetime.today()
+        yesterday = today - timedelta(days = 1)
+        today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , today)
+        yesterday_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , yesterday)
+
+        site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
+        if len(site_data) == 0:
+            print( str(datetime.today()) + ' no items in ' + user.getUsername() + ' ' + str(zip_code))
+            continue
+        ## I have already added to db today so i will check if there is something new
         if len(today_rows) >= 1:
+            print( str(datetime.today()) + ' already added to db '+ user.getUsername() + ' ' + str(zip_code) + ' today.')
             db_items = today_rows[0]['best priced']
-            site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
-            if len(site_data) == 0:
-                continue
             site_items = find_Best_Priced(site_data, user.best_search_pricecutof)
             ## TODO ójj?? 
             db_items_id = []
@@ -238,14 +225,34 @@ for user in user_list:
                 if site_items[i]['id'] not in db_items_id:
                     not_same.append(site_items[i])
             if(len(not_same) != 0):
-                header = { 'City': 'Update in ' + str(not_same[0]['post_number']), 'avrage price': -100 }
-                content.add_header(header)
-                content.add_contend(not_same)
-                content_was_added = True
+                if 'new items today' in today_rows[0].keys():
+                    for item in today_rows[0]['new items today']:
+                        site_items_ids = []
+                        for id in site_items:
+                            site_items_ids.append(int(id['id']))
+                        if int(item['id']) in site_items_ids:
+                            print( str(datetime.today()) + ' This item is not new ' + user.getUsername() + ' ' + str(zip_code) + ' ')
+                        else:
+                            print( str(datetime.today()) + ' this item is new i will add to new items and send email to ' + user.getUsername() + ' ' + str(zip_code) + ' ')
+                            header = { 'City': 'Update in ' + str(not_same[0]['post_number']), 'avrage price': -100 }
+                            content.add_header(header)
+                            content.add_contend(not_same)
+                            content_was_added = True
+                            update_array_in_row(today_rows[0]['_id'], item, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
+                else:
+                    print( str(datetime.today()) + ' this item is new i will add to new items and send email to ' + user.getUsername() + ' ' + str(zip_code) + ' ')
+
+                    header = { 'City': 'Update in ' + str(not_same[0]['post_number']), 'avrage price': -100 }
+                    content.add_header(header)
+                    content.add_contend(not_same)
+                    content_was_added = True
+                    for item in not_same:
+                        update_array_in_row(today_rows[0]['_id'], item, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
+    
+
+        ## I will add to db
         else:
-            site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
-            if len(site_data) == 0:
-                continue
+            print( str(datetime.today()) + ' adding to database '+ user.getUsername() + ' ' + str(zip_code) )
             avrage_price = find_avrage_price(site_data)
             best_priced = find_Best_Priced( site_data, user.best_search_pricecutof )
             tableRow = {
@@ -265,7 +272,9 @@ for user in user_list:
             content.add_header(header)
             content.add_contend(tableRow['best priced'])
             content_was_added = True
-    if content_was_added is True :
+            print( str(datetime.today()) + ' added new row to database ' + user.getUsername() + ' ' + str(zip_code))
+
+    if content_was_added is True and compare_two_days(today_rows,yesterday_rows) is False :
         if not os.path.exists('send_email_temps'):
             os.makedirs('send_email_temps')
         f = open( 'send_email_temps/' + user.getUsername() + '.html', 'w' )
