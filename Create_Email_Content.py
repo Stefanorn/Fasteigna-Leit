@@ -1,11 +1,14 @@
 import re
+from pathlib import Path
+
+path = str(Path(__file__).parent.absolute())
 
 def _readable_large_number(large_number):
     large_number = large_number[::-1]
     large_number = '.'.join(large_number[i:i+3] for i in range(0, len(large_number), 3))
     return large_number[::-1]
 class Create_Email_Content(object):
-
+    
     def __init__(self, body=None, header=None):
         self.body = body
         self.header = header
@@ -41,14 +44,14 @@ class Create_Email_Content(object):
         self.res += headline
 
     def _generate_head(self):
-        f = open('./emailTemplate/head.html')
+        f = open(path + '/emailTemplate/head.html')
         return f.read()
     def _generate_headLine(self):
-        f = open('./emailTemplate/headline.html')
+        f = open(path + '/emailTemplate/headline.html')
         return f.read()
     def _generate_item(self):
-        f = open('./emailTemplate/item.html')
+        f = open( path + '/emailTemplate/item.html')
         return f.read()
     def _generate_fooder(self):
-        f = open('./emailTemplate/fooder.html')
+        f = open( path + '/emailTemplate/fooder.html')
         return f.read()

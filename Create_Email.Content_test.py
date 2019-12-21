@@ -1,5 +1,4 @@
-""""
-Þetta ætti að vera í testfile
+from Create_Email_Content import Create_Email_Content
 bodyTemp = [{
             "id" : 123,
             "link" : 'www.hugi.is',
@@ -45,4 +44,3 @@ cle.add_header(headTemp)
 cle.add_contend(bodyTemp)
 
 print(cle.Html_Content())
-""""
