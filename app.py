@@ -118,14 +118,9 @@ def compare_two_days(d1,d2):
             continue
         for d2_item in dataset2[0]['best priced']:
             d2_id.append(d2_item['id'])
-    print(d1_id)
-    print(d2_id)
     if d1_id == d2_id:
-        print ('true')
         return True
     else:
-        print ('false')
-
         return False
 def Get_rows_from_today(connection_string, database, collection, today):
 
