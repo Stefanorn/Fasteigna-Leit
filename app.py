@@ -106,23 +106,29 @@ def add_row_to_database(table_row, connection_string, database, collection ):
     db_cm = mng_db[collection]
     db_cm.insert_one(table_row)
 def compare_two_days(d1,d2):
-    
     d1_id = []
     for dataset in d1:
-        for d1_item in dataset['best priced']:
+        if len(dataset) == 0:
+            continue
+        for d1_item in dataset[0]['best priced']:
             d1_id.append(d1_item['id'])
     d2_id = []
     for dataset2 in d2:
-        for d2_item in dataset2['best priced']:
+        if len(dataset2) == 0:
+            continue
+        for d2_item in dataset2[0]['best priced']:
             d2_id.append(d2_item['id'])
-
+    print(d1_id)
+    print(d2_id)
     if d1_id == d2_id:
+        print ('true')
         return True
     else:
+        print ('false')
+
         return False
 def Get_rows_from_today(connection_string, database, collection, today):
-    
-    today = datetime.today()
+
     start = datetime(today.year, today.month, today.day, 0, 0)
     end = datetime(today.year, today.month, today.day, 23, 59)
 
@@ -198,14 +204,16 @@ user_list.append(User('vidir17@ru.is',1000000,50000000,1,['109','112','113','200
 for user in user_list:
     content = Create_Email_Content()
     content_was_added = False
-    today_rows = []
-    yesterday_rows = []
+    all_today_rows = []
+    all_yesterday_rows = []
     for zip_code in user.zip_codes:
         username = user.getUsername()
         today = datetime.today()
         yesterday = today - timedelta(days = 1)
         today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , today)
-        yesterday_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , yesterday)
+
+        all_yesterday_rows.append(Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , yesterday))
+        all_today_rows.append(Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , today))
 
         site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
         if len(site_data) == 0:
@@ -274,7 +282,7 @@ for user in user_list:
             content_was_added = True
             print( str(datetime.today()) + ' added new row to database ' + user.getUsername() + ' ' + str(zip_code))
 
-    if content_was_added is True and compare_two_days(today_rows,yesterday_rows) is False :
+    if content_was_added is True and compare_two_days(all_today_rows,all_yesterday_rows) is False :
         if not os.path.exists('send_email_temps'):
             os.makedirs('send_email_temps')
         f = open( 'send_email_temps/' + user.getUsername() + '.html', 'w' )
