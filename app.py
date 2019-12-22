@@ -208,7 +208,6 @@ for user in user_list:
         today_rows = Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , today)
 
         all_yesterday_rows.append(Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , yesterday))
-        all_today_rows.append(Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , today))
 
         site_data = get_data_from_site( user.min_price, user.max_price, user.min_rooms, zip_code )
         if len(site_data) == 0:
@@ -251,8 +250,6 @@ for user in user_list:
                     content_was_added = True
                     for item in not_same:
                         update_array_in_row(today_rows[0]['_id'], item, Constnts.DB_CONNECTION_STRING, user.getUsername(), str(zip_code) )
-    
-
         ## I will add to db
         else:
             print( str(datetime.today()) + ' adding to database '+ user.getUsername() + ' ' + str(zip_code) )
@@ -276,7 +273,7 @@ for user in user_list:
             content.add_contend(tableRow['best priced'])
             content_was_added = True
             print( str(datetime.today()) + ' added new row to database ' + user.getUsername() + ' ' + str(zip_code))
-
+        all_today_rows.append(Get_rows_from_today(Constnts.DB_CONNECTION_STRING, username, zip_code , today))
     if content_was_added is True and compare_two_days(all_today_rows,all_yesterday_rows) is False :
         if not os.path.exists('send_email_temps'):
             os.makedirs('send_email_temps')
